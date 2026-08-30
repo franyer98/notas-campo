@@ -11,7 +11,12 @@ from .structure import estructurar_nota
 
 app = FastAPI(title="Notas de Campo - Rubiales")
 
-AUDIO_DIR = "/data/audios"  # monta un disco persistente de Render aquí
+AUDIO_DIR = "/opt/render/project/src/audios"  # carpeta local dentro del contenedor.
+# NOTA: en el plan gratis de Render el filesystem es efímero — estos audios
+# se pierden en cada redeploy o cuando el servicio duerme por inactividad.
+# El texto_offline queda igual como respaldo. Si más adelante necesitas
+# conservar los audios permanentemente, hay que pasar a un plan con disco
+# persistente y montar aquí ese disco (ej: /data).
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
 
