@@ -122,6 +122,18 @@ def reporte_del_dia():
         db.close()
 
 
+@app.get("/notas/todas")
+def todas_las_notas():
+    """Sin filtro de fecha — útil para descartar desfases de zona horaria
+    entre el dispositivo (Colombia, UTC-5) y el servidor (UTC)."""
+    db = SessionLocal()
+    try:
+        notas = db.query(NotaCampo).order_by(NotaCampo.recibido_en.desc()).limit(50).all()
+        return [n.to_dict() for n in notas]
+    finally:
+        db.close()
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
