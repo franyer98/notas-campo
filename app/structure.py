@@ -2,8 +2,11 @@ import os
 import json
 import httpx
 
-ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
-ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
+# Reutilizamos la misma GROQ_API_KEY que ya usas para transcribir audio.
+# Groq también sirve modelos de texto (Llama 3.3) gratis, así evitamos
+# depender de una API de pago solo para estructurar el JSON.
+GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_API_KEY = os.environ["GROQ_API_KEY"]
 
 PROMPT_SISTEMA = """Eres un asistente que convierte notas de voz dictadas en \
 campo por un ingeniero de confiabilidad en inspecciones de emisiones \
@@ -22,29 +25,29 @@ claves:
 
 async def estructurar_nota(texto: str) -> dict:
     headers = {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json",
     }
     body = {
-        "model": "claude-sonnet-4-6",
+        "model": "llama-3.3-70b-versatile",
         "max_tokens": 500,
-        "system": PROMPT_SISTEMA,
-        "messages": [{"role": "user", "content": texto}],
+        "temperature": 0,
+        "response_format": {"type": "json_object"},  # fuerza salida JSON válida
+        "messages": [
+            {"role": "system", "content": PROMPT_SISTEMA},
+            {"role": "user", "content": texto},
+        ],
     }
 
     async with httpx.AsyncClient(timeout=20) as client:
-        resp = await client.post(ANTHROPIC_API_URL, headers=headers, json=body)
+        resp = await client.post(GROQ_CHAT_URL, headers=headers, json=body)
         resp.raise_for_status()
         data = resp.json()
 
-    texto_respuesta = "".join(
-        bloque["text"] for bloque in data["content"] if bloque["type"] == "text"
-    )
-    texto_limpio = texto_respuesta.replace("```json", "").replace("```", "").strip()
+    texto_respuesta = data["choices"][0]["message"]["content"]
 
     try:
-        return json.loads(texto_limpio)
+        return json.loads(texto_respuesta)
     except json.JSONDecodeError:
         # Si el modelo no devolvió JSON válido, no perdemos la nota:
         # la guardamos cruda y la marcamos para revisión manual.
