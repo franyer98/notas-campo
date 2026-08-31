@@ -27,7 +27,7 @@ async def transcribir_audio(audio_bytes: bytes, filename: str = "nota.ogg") -> s
             "Inspección de emisiones fugitivas con cámara OGI en Campo "
             "Rubiales, CPF-1, CPF-2. Términos: clúster, válvula, brida, "
             "conexión, tanque, fuga, mechero, separador, bomba, línea de "
-            "crudo, manifold, sello mecánico, PSI, ppm."
+            "crudo, manifold, sello mecánico, PSI, ppm, RB10, RB."
         ),
     }
 
