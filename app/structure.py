@@ -29,7 +29,7 @@ async def estructurar_nota(texto: str) -> dict:
         "Content-Type": "application/json",
     }
     body = {
-        "model": "llama-3.3-70b-versatile",
+        "model": "openai/gpt-oss-120b",
         "max_tokens": 500,
         "temperature": 0,
         "response_format": {"type": "json_object"},  # fuerza salida JSON válida

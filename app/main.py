@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import FastAPI, UploadFile, Form, HTTPException, BackgroundTasks
 from sqlalchemy.exc import IntegrityError
@@ -110,10 +110,13 @@ async def subir_nota(
 def reporte_del_dia():
     db = SessionLocal()
     try:
-        hoy = datetime.utcnow().date()
+        # Usamos las últimas 24 horas en vez de "medianoche UTC" para
+        # evitar que el desfase entre la hora de Colombia (UTC-5) y UTC
+        # haga que notas de "hoy" en Colombia parezcan de "ayer" aquí.
+        desde = datetime.utcnow() - timedelta(hours=24)
         notas = (
             db.query(NotaCampo)
-            .filter(NotaCampo.creado_en_dispositivo >= hoy)
+            .filter(NotaCampo.creado_en_dispositivo >= desde)
             .order_by(NotaCampo.creado_en_dispositivo)
             .all()
         )
