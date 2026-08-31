@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from fastapi import FastAPI, UploadFile, Form, HTTPException, BackgroundTasks
+from fastapi.responses import HTMLResponse
 from sqlalchemy.exc import IntegrityError
 
 from .models import SessionLocal, NotaCampo, init_db
@@ -140,3 +141,76 @@ def todas_las_notas():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/notas/ver", response_class=HTMLResponse)
+def ver_notas():
+    """Vista visual de las notas — más fácil de leer en el navegador del
+    teléfono que el JSON crudo de /notas/todas."""
+    db = SessionLocal()
+    try:
+        notas = db.query(NotaCampo).order_by(NotaCampo.recibido_en.desc()).limit(50).all()
+    finally:
+        db.close()
+
+    colores_severidad = {"alta": "#e74c3c", "media": "#f39c12", "baja": "#27ae60"}
+
+    tarjetas = ""
+    for n in notas:
+        est = n.estructurada or {}
+        cluster = est.get("cluster") or "—"
+        componente = est.get("componente") or "—"
+        tipo = est.get("tipo_hallazgo") or "—"
+        severidad = est.get("severidad")
+        descripcion = est.get("descripcion") or n.texto_whisper or n.texto_offline or "(sin texto)"
+        accion = est.get("accion_sugerida")
+        fecha = n.creado_en_dispositivo.strftime("%d/%m/%Y %I:%M %p") if n.creado_en_dispositivo else "—"
+
+        color_sev = colores_severidad.get(severidad, "#555")
+        badge_sev = f'<span style="background:{color_sev};color:#fff;padding:2px 10px;border-radius:12px;font-size:12px">{severidad or "sin definir"}</span>'
+
+        badge_estado = ""
+        if n.estado != "estructurada":
+            badge_estado = f'<div style="color:#e74c3c;font-size:12px;margin-top:6px">⚠ {n.estado}</div>'
+
+        accion_html = f'<div style="margin-top:8px;color:#8ab4f8;font-size:14px">➜ {accion}</div>' if accion else ""
+
+        tarjetas += f"""
+        <div style="background:#1e1e1e;border-radius:12px;padding:16px;margin-bottom:14px;border-left:4px solid {color_sev}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <span style="color:#aaa;font-size:13px">{fecha}</span>
+                {badge_sev}
+            </div>
+            <div style="font-size:15px;color:#eee;line-height:1.4">{descripcion}</div>
+            <div style="margin-top:10px;font-size:13px;color:#999">
+                Clúster: <b style="color:#ddd">{cluster}</b> &nbsp;·&nbsp;
+                Componente: <b style="color:#ddd">{componente}</b> &nbsp;·&nbsp;
+                Tipo: <b style="color:#ddd">{tipo}</b>
+            </div>
+            {accion_html}
+            {badge_estado}
+        </div>
+        """
+
+    if not tarjetas:
+        tarjetas = '<div style="color:#888;text-align:center;padding:40px">No hay notas todavía.</div>'
+
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Notas de Campo</title>
+        <style>
+            body {{ background:#121212; margin:0; padding:16px; font-family: -apple-system, Roboto, sans-serif; }}
+            h1 {{ color:#fff; font-size:20px; margin-bottom:16px; }}
+        </style>
+    </head>
+    <body>
+        <h1>📋 Notas de Campo — Rubiales</h1>
+        {tarjetas}
+    </body>
+    </html>
+    """
+    return html
