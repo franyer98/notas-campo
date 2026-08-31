@@ -26,6 +26,15 @@ def startup():
     init_db()
 
 
+FRASES_ALUCINADAS = {
+    "gracias por ver el video.",
+    "gracias por ver el video",
+    "subtítulos por la comunidad de amara.org",
+    "suscríbete al canal",
+    "subtitulado por jnkoil",
+}
+
+
 async def procesar_nota(nota_id: str, audio_bytes: bytes | None):
     """Transcribe (si hay audio) y estructura la nota. Corre en background
     para que Tasker reciba el 200 OK de inmediato y no reintente por timeout."""
@@ -40,6 +49,14 @@ async def procesar_nota(nota_id: str, audio_bytes: bytes | None):
         if audio_bytes:
             try:
                 texto_whisper = await transcribir_audio(audio_bytes)
+                # Whisper "alucina" frases de subtítulos genéricos cuando
+                # recibe audio silencioso o casi vacío — las descartamos
+                # aquí en vez de procesarlas como si fueran una nota real.
+                if texto_whisper.strip().lower() in FRASES_ALUCINADAS:
+                    nota.texto_whisper = texto_whisper
+                    nota.estado = "descartada_sin_voz"
+                    db.commit()
+                    return
                 nota.texto_whisper = texto_whisper
                 texto_base = texto_whisper  # el fino manda sobre el tosco offline
                 nota.estado = "transcrita"
