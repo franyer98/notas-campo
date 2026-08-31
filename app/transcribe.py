@@ -1,4 +1,5 @@
 import os
+import re
 import httpx
 
 # Groq ofrece Whisper large-v3 a una fracción del costo/latencia de OpenAI.
@@ -37,9 +38,16 @@ async def transcribir_audio(audio_bytes: bytes, filename: str = "nota.ogg") -> s
             async with httpx.AsyncClient(timeout=30) as client:
                 resp = await client.post(GROQ_API_URL, headers=headers, files=files, data=data)
                 resp.raise_for_status()
-                return resp.text.strip()
+                return _normalizar_codigos(resp.text.strip())
         except Exception as e:
             ultimo_error = e
             continue
 
     raise RuntimeError(f"Fallo la transcripción tras 3 intentos: {ultimo_error}")
+
+
+def _normalizar_codigos(texto: str) -> str:
+    """Whisper a veces transcribe códigos como 'RB10' sin separador, o con
+    espacio ('RB 10'). Forzamos siempre el formato 'RB-10' para que salga
+    consistente en las notas, sin importar cómo lo haya oído."""
+    return re.sub(r"\bRB\s*-?\s*(\d+)\b", r"RB-\1", texto, flags=re.IGNORECASE)
