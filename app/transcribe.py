@@ -20,6 +20,15 @@ async def transcribir_audio(audio_bytes: bytes, filename: str = "nota.ogg") -> s
         "model": "whisper-large-v3",
         "language": "es",
         "response_format": "text",
+        # El prompt no se transcribe, pero le da a Whisper contexto del
+        # vocabulario esperado — mejora mucho el reconocimiento de jerga
+        # técnica que de otra forma confunde con palabras comunes en español.
+        "prompt": (
+            "Inspección de emisiones fugitivas con cámara OGI en Campo "
+            "Rubiales, CPF-1, CPF-2. Términos: clúster, válvula, brida, "
+            "conexión, tanque, fuga, mechero, separador, bomba, línea de "
+            "crudo, manifold, sello mecánico, PSI, ppm."
+        ),
     }
 
     ultimo_error = None
